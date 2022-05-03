@@ -1,0 +1,383 @@
+% !TEX program = xelatex
+% !TEX options = --shell-escape -synctex=1 -interaction=nonstopmode -file-line-error "%DOC%"
+
+
+\documentclass{nrfh-ish}
+
+%\usepackage[utf8]{inputenc}
+%\usepackage[spanish,es-noshorthands]{babel}
+\usepackage{color}
+\usepackage[x11names, svgnames, rgb]{xcolor}
+\usepackage{tikz}
+\usetikzlibrary{snakes,arrows,shapes,babel,calc}
+\usepackage{amsmath}
+\usepackage{enumerate}
+\usepackage{booktabs, multirow} % for borders and merged ranges
+\usepackage{soul}% for underlines
+\usepackage{changepage,threeparttable}
+\usepackage{float}
+\usepackage{listings}
+\usepackage{pdfpages}
+\usepackage{minted}
+\usepackage[spanish]{babel}
+\usepackage{schemata}
+\usepackage{longtable}
+
+\ExplSyntaxOn
+
+\NewDocumentCommand{\getenv}{om}
+{
+  \sys_get_shell:nnN{ kpsewhich ~ --var-value ~ #2 }{}#1
+}
+
+\ExplSyntaxOff
+\getenv[\MATRICULA]{MATRICULA}
+
+\usepackage{fontspec}
+\setmonofont{Fira Code}[
+    Contextuals = Alternate,
+    Ligatures = TeX,
+]
+
+\lstset{
+  basicstyle=\ttfamily,
+  extendedchars=true,
+  inputencoding=utf8,
+  literate=
+    {∷}{{ $\coloncolon$ }}1 {→}{{ $\rightarrow$ }}1
+    {ℕ}{{ $\mathbb{N}$ }}1 {≡}{{ $\equiv$ }}1
+    {∀}{{ $\forall$ }}1 {λ}{{$\lambda$}}1
+    {ˡ}{{ $\textsuperscript{l}$ }}1
+    {ʳ}{{ $\textsuperscript{r}$ }}1
+    {∙}{{ $\cdot$ }}1
+    {₂}{{ $\textsubscript{2}$ }}1
+    {≟}{{ $\stackrel{?}{=}$ }}1
+    {×}{{ $\times$ }}1
+    {₀}{{ $\textsubscript{0}$ }}1
+    {₁}{{ $\textsubscript{1}$ }}1
+    ,
+  captionpos=b,
+  breaklines=true,
+  columns=fullflexible,
+}
+
+\newcommand\AB[2]{\schema{\schemabox{#1}}{\schemabox{#2}}}
+
+\newcommand\Par[1]{\begin{tabular}{p{9.5cm}}#1\end{tabular}}
+
+  
+%\usepackage{listings-rust}
+
+%NIGHT MODE 🌚
+%\pagecolor[rgb]{0.1,0.1,0.1}  
+%\color[rgb]{1,1,1} 
+
+%\usetikzlibrary{topaths,arrows,automata, positioning,shapes.multipart,shapes}
+\newcount\mycount
+
+%\graphicspath{{./}}
+
+%\theoremstyle{definition}
+\newtheorem{definition}{Definici\'on}[section]
+\newtheorem{proposition}[definition]{Proposici\'on}
+\newtheorem{lemma}[definition]{Lema}
+\newtheorem{theorem}[definition]{Teorema}
+\newtheorem{corollary}[definition]{Corolario}
+\newtheorem{example}[definition]{Ejemplo}
+\newtheorem{observation}[definition]{Observaci\'on}
+\newtheorem{problem}{Problema}
+\newtheorem{question}[definition]{Pregunta}
+\newtheorem{pointt}{}
+
+\def\proof{\noindent{\textbf{Demostraci\'on}}\\}
+\def\endproof{\hfill{\ensuremath\square}}
+\def\refname{Referencias}
+\allowdisplaybreaks
+
+\title{Proyecto Final: Similitud Coseno}
+\titlesub{Recuperación de Información\\
+Beatriz Beltrán Martínez\\
+Licenciatura en Ciencias de la Computación\\
+Primavera 2022}
+\headertitle{Proyecto Final: Similitud Coseno}
+%\titleÑ{Correlacion de }
+
+\author{\authormacro{Gustavo Iván Molina Rebolledo}{\MATRICULA\\Benemérita Universidad Autónoma de Puebla}
+}
+\headerauthor{I. Molina-Rebolledo}
+
+\date{\today}
+
+
+\begin{document}
+\maketitledoble
+
+%\begin{abstractñ}
+%    Descripción breve de ideas de proyectos.\end{abstractñ}
+
+\begin{abstract}
+  In this paper, we present a Haskell program that calculates the similarity
+  between every pair of given documents. The similarity is calculated using
+  the cosine similarity. The documents are given as text files which are
+  parsed and stored in a data structure. Then the program calculates the
+  number of ocurrences of each word in the documents and the respective
+  weight for each word. All of this is done in Haskell except the stemming
+  process which is done through the use of a C library. We also discuss the
+  performance of the program and the posible improvements that could be
+  made.
+\end{abstract}
+
+\makedate
+
+%BEGIN DOCUMENT
+\clearpage
+
+\section{Introducción}
+Este trabajo retoma las ideas que se han presentado en los trabajos anteriores.
+Sin embargo, se está tomando en cuenta una nueva organización del código, de
+forma que se espera una mejora con respecto a las entregas previas. Parte de
+estas mejoras es gracias a que se tiene una mejor visión de lo que se está
+realizando.
+
+Al igual que en los documentos ya presentados, este trabajo se encuentra
+codificado en el lenguaje de programación Haskell. Se han hecho uso de
+varias librerías para la implementación de las funciones, mismas que se
+encuentran disponibles en Hackage. Esta elección tine un punto negativo
+que será explicado más adelante.
+
+\section{Diseño del proyecto}
+El programa se encuentra dividido en varias secciones internas:
+\textit{Parsing}, \textit{Stage0}, \textit{Stage1}, \textit{Stage2}.
+Cada una de estás secciones se encargan de llevar a cabo trabajos
+específicos del procesado de los documentos. Además, se encuentra un
+modulo \textit{main} que se encarga de la ejecución del programa.
+
+\subsection{Parsing}
+Para el \textit{Parsing} asumimos que el documento se encuentra
+previamente almacenado en una estructura de datos de tipo \textit{Text}.
+Ya que este proceso es de naturaleza impura, no se puede realizar
+en esta sección; \textit{main} se encargará de ello.
+
+Nuestro punto de entrada para esta sección es la función 
+\textit{parseDocument}. Esta función se encarga de extraer los datos
+del archivo de texto y de preprocesarlos para que puedan ser utilizados
+por el resto de las secciones.
+
+El primer paso es hacer uso de la libraria \textit{Text.XML.Light} para
+leer el archivo XML en una estructura manejable. El problema de hacer
+esto directamente es que la librería toma en cuenta los saltos de línea
+al momento de leer las etiquetas. Por lo tanto, se debe realizar un
+filtro para eliminar todos aquellos objetos que no sean elementos con
+información relevante.
+
+Una vez que tenemos está divisíon de datos, se procede a dividir los
+datos en dos partes: la información del documento y el texto de la
+noticia. Esto se retorna en una lista de tuplas que puede ser accedida
+por los siguientes pasos.
+
+Lo siguiente a hacer es limpiar y preprocesar el texto de la noticia.
+Para ello eliminamos todos los números de la noticia, los signos de
+puntuación, las urls y se convierte el texto a minúsculas. Posteriormente,
+el texto es dividido en palabras y se filtra de forma que no se incluyan
+\textit{stopwords}. Por último, se ensambla el texto en un solo
+\textit{Text} y se da como entrada al algoritmo de \textit{stemming}.
+
+El algoritmo de \textit{stemming} que estamos usando en este trabajo
+es un proyecto antiguo, además de que se trata de una biblioteca que
+hace \textit{ffi} a una biblioteca en C. Una de las complicaciones al
+usar este algoritmo es que no se puede hacer uso de la librería de
+forma directa, sino que hay que modificar el código de la biblioteca
+para que funcione en un compilador de Haskell más moderno.
+
+El algoritmo usado, a pesar de que es una biblioteca de C «antigua»,
+compila sin problemas en Darwin moderno.
+
+\subsection{Stage0 y representación interna}
+Lo más interesante (e importante) de esta sección es que se ha
+diseñado un tipo producto para la representación de los datos que
+nos permite tener un mejor control y acceso en las etapas siguientes.
+Esta estructura está definida como se muestra a continuación:
+
+\lstinputlisting[firstline=13, lastline=19]{src/IndexRep.hs}
+disponibles (\textit{\_\_docsN}) y la lista de las palabras que se
+usan a lo largo de todos los documentos (\textit{\_\_words}). En
+cuanto a \textit{\_\_docs}, se define como una representación de
+indice invertido, pero manejando un \textit{Map} para tener orden
+en el acceso. Está ultima guarda las apariciones de cada palabra
+en cada documento (si el documento la contiene).
+
+Tener \textit{\_\_docs} y \textit{\_\_weights} puede parecer un
+poco ineficiente. Técnicamente lo es, pero en este proyecto se
+requiere para poder mostrar los datos calculados por el programa.
+Además, en un principio requerimos de \textit{\_\_docs} para poder
+tener suficiente información para el calculo de \textit{\_\_weights}.
+Por lo que pensamos que su uso (en este caso específicamente) es
+justificado.
+
+Además se definen una serie de \textit{lenses} y morfismos para
+tener un acceso más fácil a los datos de la estructura. Esto es una
+mejora muy grande con respecto a las versiones anteriores que se
+han realizado. Simplifica grandemente la claridad del código y
+reduce la necesidad de declarar más funciones.
+
+En cuanto a la generación, en esta etapa sólo se inicializa la
+estructura con el número de documentos y la lista de palabras en
+orden. Además se establecen los mapas con listas vacías.
+
+\subsection{Stage1}
+
+En esta sección no hay necesidad de una explicación muy extensa,
+ya que se trata de una etapa que se encarga de llenar la estructura
+con el número de apariciones de cada palabra en cada documento.
+Simplemente suministramos el texto de cada documento y la
+estructura de datos que se encuentra en la etapa anterior.
+El resultado de esta etapa es una estructura de datos con la
+información actualizada.
+
+\subsection{Stage2}
+
+Aquí nos ecargamos de calcular el peso de cada palabra en cada
+documento. En este caso basta con proporcionar sólo la estructura
+de datos de la etapa anterior, ya que contiene la información
+necesaria para calcular cada uno de los pesos.
+
+\subsubsection{TF}
+Definimos la función \textit{tf} que calcula la frecuencia de una
+palabra en un documento de la siguiente forma:
+
+\lstinputlisting[firstline=91, lastline=96]{src/IndexRep.hs}
+
+\subsubsection{IDF}
+Definimos la función \textit{idf} que calcula la frecuencia de una
+palabra en todos los documentos de la siguiente forma:
+
+\lstinputlisting[firstline=91, lastline=96]{src/IndexRep.hs}
+
+
+\subsubsection{TF-IDF}
+Finalmente, definimos la función \textit{tfidf} que calcula el
+pesado del termino de la siguiente forma:
+
+\lstinputlisting[firstline=98, lastline=100]{src/IndexRep.hs}
+
+\subsubsection{Peso}
+Simplemente basta con proveer de los indice necesarios (y de la
+estructura de datos de la etapa anterior) para calcular el peso
+de cada palabra. Esto se puede optener con facilidad usando los
+lenses. Además de que la estructura de la función \textit{tfidf}
+es más similar a su definición teoríca.
+
+Al acabar el procesor para todos los indices, tenemos una estructura
+actualizada con los valores para \textit{\_\_weights}
+correspondientes a cada palabra.
+
+\subsection{Similitud Coseno}
+La similitud coseno es una de las más importantes funciones que
+se presentan en este proyecto, ya que es la que se encarga de
+calcular la similitud entre dos documentos. Pero en este caso,
+se calculá todos los pares de documentos. Esta función se define
+como sigue:
+
+\lstinputlisting[firstline=74, lastline=78]{src/Glue.hs}
+Sólo hay que suministrarle los respectivos vectores de pesos
+de cada documento a comparar.
+
+Sin embargo, la función no se ejecuta directamente, sino que es
+invocada por una función que se encarga de ejecutarla en cada
+par de documentos. Esto se realiza facilmente con el uso de
+una \textit{comprehension list} que da los resultados de todos
+los cálculos.
+
+\subsection{Ensamblaje (\textit{main})}
+La longitud de los datos es demasiado grande para que se pueda
+calcular directamente a mano. Por lo que se necesita una función
+que se encarga de ejecutar todos los procesos necesarios para
+calcular la similitud entre todos los documentos.
+
+En este apartado nos encontramos con funciones que calculan
+los datos de cada etapa y que se encargan de escribir los datos
+en un archivo compilable por \LaTeX{}. Esto se realiza con
+el uso del paquete \textit{HaTeX}, que nos permite escribir
+archivos de texto en \LaTeX{} directamente desde el código
+en Haskell.
+
+Por lo que la impresión de los datos en las siguientes secciones
+es hecha programáticamente.
+
+\section{Tabla del conteo de documentos y palabras}
+
+{
+\fontsize{2pt}{2pt}\selectfont
+
+\input{table0.tex}
+
+}
+
+\section{Tabla del peso de documentos y palabras}
+
+{
+\fontsize{2pt}{2pt}\selectfont
+
+\input{table1.tex}
+
+}
+
+\section{Tabla de la Similitud Coseno}
+
+
+\resizebox{\textwidth}{!}{
+{
+\fontsize{2pt}{2pt}\selectfont
+
+\input{table2.tex}
+
+}
+}
+
+\section{Ejecución del programa}
+El programa se ejecuta desde la línea de comandos haciendo
+uso de \textit{ghci}, o bien, compilando el programa con
+\textit{ghc}. El resultado de la compilación nos da un
+programa que es capaz de generar cada uno de los pasos y
+de escribir los datos en un archivo \LaTeX{} compilable.
+
+Para más información, consulte el archivo \textit{README.md}
+
+\section{Conclusiones}
+Algo importante que se debe tener en cuenta es que el proceso
+de indexación es muy lento por la forma en la que se realiza
+el cálculo de los textos. Por lo que es recomendable que
+en una implementación más eficiente, se haga uso de estructuras
+que permitan el acceso de datos más rápido.
+
+Haskell es un lenguaje de programación inmutable, por lo que
+no se puede modificar el contenido de una estructura de datos
+sin crear una nueva. Este es un problema ya que nos obliga a
+crear una nueva estructura para cada cambio que se realice.
+
+Obviamente estos cambios afectan considerablemente al rendimiento
+de la aplicación. Sin embargo, simepre hay alternativas que
+podrían resolver este problema, como el uso de monadas, IO,
+estructuras ligadas a tipos lineales, etc.
+
+Pero todas estas alternativas son muy complicadas y no son
+parte del alcance de este proyecto.
+
+Otro punto a tomar en cuenta es que si bien el proceso de
+similitud debería ser muy rápido, esto no es lo que se ha
+observado. En realidad el cálculo de la similitud es bastante
+lento, siendo la parte más lenta de toda la aplicación.
+
+Esto se debe probablemente a que hay que generar una gran
+cantidad de vectores. Un total de $101*101$ resultados
+son generados, lo que es bastante grande y puede ser
+complicado de calcular.
+
+Estos tiempos son aún más lentos cuando se ejecuta desde el
+comando \textit{ghci}. Por lo que es recomendable que se
+compile el programa con \textit{ghc} para que se ejecute
+más rápido la generación de los documentos.
+
+
+
+\end{document}

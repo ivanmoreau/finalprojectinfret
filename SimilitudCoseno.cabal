@@ -1,0 +1,50 @@
+cabal-version:       2.4
+name:                SimilitudCoseno
+version:             0.0.0.0
+synopsis:            See README for more info
+description:         See README for more info
+homepage:            https://gitlab.ivmoreau.com/flp-haskell/magic-squares
+bug-reports:         https://gitlab.ivmoreau.com/flp-haskell/magic-squares/-/issues
+license:             GPL-3.0-only
+license-file:        LICENSE
+author:              Iván Molina Rebolledo
+maintainer:          Iván Molina Rebolledo <ivanmolinarebolledo@gmail.com>
+copyright:           2022 Iván Molina Rebolledo
+build-type:          Simple
+tested-with:         GHC == 9.2.1
+
+common common-options
+  build-depends:       base ^>= 4.16.0.0, regex, cmdargs
+  
+  ghc-options:         -Wall
+                       -Wcompat
+                       -Widentities
+                       -Wincomplete-uni-patterns
+                       -Wincomplete-record-updates
+  if impl(ghc >= 8.0)
+    ghc-options:       -Wredundant-constraints
+  if impl(ghc >= 8.2)
+    ghc-options:       -fhide-source-paths
+  if impl(ghc >= 8.4)
+    ghc-options:       -Wmissing-export-lists
+                       -Wpartial-fields
+  if impl(ghc >= 8.8)
+    ghc-options:       -Wmissing-deriving-strategies
+
+  default-language:    Haskell2010
+
+library
+  import:              common-options
+  hs-source-dirs:      src
+  exposed-modules:     Preprocess, Glue, IndexRep, PrepTexts, Stopwords
+  build-depends:       xml, text, containers, parsec, optics, stemmer, parallel, cereal, cereal-text, HaTeX,bytestring
+
+executable similitud_coseno
+  import:              common-options
+  hs-source-dirs:      app
+  main-is:             SimilitudCoseno.hs
+  build-depends:       cmdargs, text, process, SimilitudCoseno, HaTeX, cereal, cereal-text, bytestring, optics, containers
+  ghc-options:         -threaded
+                       -rtsopts
+                       -with-rtsopts=-N
+

@@ -1,0 +1,198 @@
+\documentclass[aspectratio=169]{beamer}
+
+%\usepackage[T1]{fontenc}
+
+\usepackage{listings}
+\usepackage{graphicx}
+\usepackage{lmodern}
+\usepackage{colonequals}
+\usepackage{amsmath}
+\usepackage[spanish]{babel}
+\usepackage{hyperref}
+\usepackage{color}
+\usepackage{multicol}
+\usepackage{fontspec}
+\setmonofont{Fira Code}[
+     Contextuals = Alternate,
+     Ligatures = TeX,
+]
+\newsavebox{\mypostbreak}
+\savebox{\mypostbreak}{\mbox{\textcolor{red}{$\hookrightarrow$}\space}}
+
+\lstset{
+  basicstyle=\ttfamily,
+  extendedchars=true,
+  inputencoding=utf8,
+  captionpos=b,
+  breaklines=true,
+  columns=fullflexible,
+  postbreak=\usebox{\mypostbreak},
+  escapeinside={(*@}{@*)},
+}
+
+
+\title{Similitud Coseno}
+
+\author{Iván Molina Rebolledo}
+
+\institute{Benemérita Universidad Autónoma de Puebla}
+\date{Primavera 2022\\\today}
+
+\begin{document}
+
+\frame{\titlepage}
+
+\begin{frame}
+\frametitle{Motivación}
+En el analisís de documentos, la comparación de los mismos es muy importante
+para extraer información relevante que puede ser usada en consultas. o
+extracción de datos. \pause
+
+Por eso resulta necesario buscar maneras de poder comparar documentos, y
+que nos permita tener un valor de similitud preciso para poder describir
+a detalle los documentos que se comparan.
+\end{frame}
+
+\begin{frame}
+\frametitle{Similitud Coseno}
+Una de las formas de comparar documentos es la similitud coseno.
+La similitud coseno es una medida de similitud entre dos documentos,
+que se calcula a partir de la suma de productos de los vectores
+de pesos de cada uno de los documentos. \pause
+
+Esto es dividido entre el producto de la raiz de la suma de los cuadrados
+de cada uno de los elementos de los vectores de pesos. \pause
+
+Más adelante veremos a detalle cómo se implementa esta similitud.
+\end{frame}
+
+\begin{frame}
+\frametitle{Diseño del proyecto}
+Este proyecto está dividido en diversas etapas internas que nos permiten
+tener un control total de lo que se está haciendo en cada paso. \pause
+
+Estas etapas se explican a continuación en las siguientes diapositivas.
+\end{frame}
+
+\begin{frame}
+\frametitle{Parsing}
+En esta etapa se realiza el parsing de los documentos, y se obtiene una
+lista de los documentos que se van a analizar. \pause
+
+Aquí es también donde los documentos son procesados. Pasamos cada uno
+de los textos que tokenizan y elimnan simbolos innecesarios. \pause
+
+Como último paso se realiza el stemming de los documentos. \pause
+Esto es hecho a partir de una librería de steaming programada en
+C. \pause Sin embargo, es un poco antigua, así que puede no ser tan
+eficiente como sus contrapartes en lenguajes como Python.
+\end{frame}
+
+\begin{frame}[fragile]
+\frametitle{Stage 0 (Estructura de datos)}
+Es importante definir una estructura de datos para los documentos.
+Nosotros la establecimos como se muestra a continuación: \pause
+
+\lstinputlisting[firstline=13, lastline=19]{src/IndexRep.hs}
+
+Además en esta etapa se incializa la estructura de datos. \pause
+Establemos las palabras y el número de documentos, mientras que
+lo demás lo incializamos vacío.
+\end{frame}
+
+\begin{frame}
+\frametitle{Stage 1}
+En esta etapa no sucede mucho. \pause
+Sólo se realiza el proceso de conteo de palabras y se guarda en la
+estructura de datos. \pause
+
+Al finalizar, tendremos una estructura de datos actualizada.
+\end{frame}
+
+\begin{frame}[fragile, allowframebreaks]
+\frametitle{Stage 2}
+Esta etapa se encarga de calcular los pesos para cada uno de los
+terminos. Esto está dado por la siguientes funciones:
+
+\lstinputlisting[firstline=91, lastline=96]{src/IndexRep.hs}
+
+\framebreak
+
+\lstinputlisting[firstline=91, lastline=96]{src/IndexRep.hs}
+
+\framebreak
+
+\lstinputlisting[firstline=98, lastline=100]{src/IndexRep.hs}
+
+\framebreak
+
+Basta con proveer de los indices adecuados (así como de la
+estructura de datos) para que se pueda realizar el cálculo de los
+pesos.
+
+\end{frame}
+
+\begin{frame}[fragile]
+\frametitle{Similitud Coseno}
+Está definción es el centro de nuestro proyecto. \pause
+
+\lstinputlisting[firstline=74, lastline=78]{src/Glue.hs}
+
+\framebreak
+
+Sin embargo la función no es invocable directamente, sino que se
+debe invocar desde una función externa que se encarga de realizar
+el cálculo de la similitud coseno para todos los pares de documentos.
+
+\end{frame}
+
+
+\begin{frame}
+\frametitle{Ensamblaje (\textit{main})]}
+En esta etapa se realiza el ensamblaje del proyecto. \pause
+Definimos cada una de las funciones que nos permiten generar las
+tablas de datos. \pause
+
+Las tablas generadas son exportadas a archivos \LaTeX{}, para que
+puedan ser visualizadas en el documento principal de este proyecto.
+\end{frame}
+
+\begin{frame}
+\frametitle{Datos}
+Por desgracia, no se puede visualizar todos los datos que se generan
+en una sola diapositiva. \pause
+
+Tan sólo una de las tablas tiene más de cuatrocientosmil registros. \pause
+
+Por suerte \LaTeX{} es capaz de visualizar una tabla de datos tan grande,
+y es la manera en la que se muestran los datos en el documento.
+\end{frame}
+
+\begin{frame}
+\frametitle{Conclusiones}
+El proceso de indexación es lento y puede ser demorado. \pause
+Esto se debe a la forma que manejamos los datos para ser procesados.\pause
+
+Aparte Haskell es un lenguaje inmutable, por lo que el costo de
+modificar una estructura de datos es muy grande. \pause
+Sin embargo, existen alternativas que pueden ser muy eficientes. \pause
+
+En cuanto a la similitud coseno, calcular todos los pares de documentos
+es una tarea muy grande. \pause De hecho, es el paso más lento y
+complicado de computar. \pause Aunque esto se puede deber a la
+cantidad de documentos que estamos tratando. \pause
+
+Sin embargo los tiempos de ejecución mejoran al compilarse a código
+nativo con GHC. \pause Mientras que el cálculo con GHCI es mucho más
+lento.
+\end{frame}
+
+\begin{frame}
+\frametitle{Muchas gracias}
+Este ha sido un proyecto de investigación de la asignatura de
+Recuperación de Información.
+
+«Espacio para dudas y comentarios, demostración del código»
+\end{frame}
+
+\end{document}
